@@ -1,0 +1,6 @@
+{
+  "name": "Minidisc Studio - Nálepky a Obaly",
+  "description": "Tvorba a tlač nálepiek a obalov pre Minidisky s automatickým vyhľadávaním albumov a exportom do PDF a CSV.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
