@@ -11,9 +11,9 @@ import {
   Image as ImageIcon,
   Upload,
   ClipboardList,
-  Sparkles,
   Check
 } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface AlbumMetadataEditorProps {
   artist: string;
@@ -40,6 +40,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
   onChangeCoverUrl,
   onUpdateTracks,
 }) => {
+  const { t } = useLanguage();
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [newTrackTitle, setNewTrackTitle] = useState('');
@@ -99,29 +100,35 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
 
   // Bulk paste parser
   const handleApplyBulkText = () => {
-    const lines = bulkText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) return;
+    if (!bulkText.trim()) return;
 
+    const lines = bulkText.split('\n').filter((l) => l.trim().length > 0);
     const parsedTracks: TrackItem[] = lines.map((line, idx) => {
-      // Regex to detect "01. Song Title - 3:45" or "1 - Song Title" or "Song Title"
-      let cleanTitle = line;
-      let duration: string | undefined = undefined;
+      let clean = line.trim();
+      let duration = '';
 
-      // Extract duration at end like (3:45) or 3:45
-      const durMatch = cleanTitle.match(/(?:\(?(\d{1,2}:\d{2})\)?)$/);
+      // Match duration at end e.g. (3:45) or 3:45
+      const durMatch = clean.match(/[\(\[]?(\d{1,2}:\d{2})[\)\]]?\s*$/);
       if (durMatch) {
         duration = durMatch[1];
-        cleanTitle = cleanTitle.replace(durMatch[0], '').trim();
+        clean = clean.replace(/[\(\[]?(\d{1,2}:\d{2})[\)\]]?\s*$/, '').trim();
       }
 
-      // Strip leading track number like "1.", "01 -", "1 "
-      cleanTitle = cleanTitle.replace(/^\d+[\.\-\s\)]+\s*/, '').trim();
+      // Match leading track number e.g. "01.", "1 -", "01 "
+      const numMatch = clean.match(/^(\d{1,3})[\.\-\s\)]+(.*)$/);
+      let num = String(idx + 1).padStart(2, '0');
+      let title = clean;
+
+      if (numMatch) {
+        num = numMatch[1].padStart(2, '0');
+        title = numMatch[2].trim();
+      }
 
       return {
-        id: `bulk-${Date.now()}-${idx}`,
-        number: String(idx + 1).padStart(2, '0'),
-        title: cleanTitle || `Skladba ${idx + 1}`,
-        duration: duration,
+        id: `track-${Date.now()}-${idx}-${Math.random()}`,
+        number: num,
+        title: title || `Track ${idx + 1}`,
+        duration: duration || undefined,
       };
     });
 
@@ -150,10 +157,10 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
       {/* Header */}
       <div>
         <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-          Krok 3 · Metadáta albumu & Zoznam skladieb
+          {t('metadataStepTitle')}
         </span>
         <h3 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">
-          Dáta pre potlač disku a obal
+          {t('metadataTitle')}
         </h3>
       </div>
 
@@ -163,7 +170,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
         {/* Cover Art Box (3 cols) */}
         <div className="md:col-span-3 flex flex-col gap-2">
           <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400">
-            Obal albumu (Cover Art):
+            {t('coverArtLabel')}
           </label>
           <div className="relative aspect-square w-full rounded-xl bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 overflow-hidden group">
             {coverUrl ? (
@@ -176,7 +183,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-neutral-400 text-xs p-2 text-center">
                 <ImageIcon className="w-8 h-8 mb-1 stroke-1" />
-                <span>Bez obrázku</span>
+                <span>{t('noImage')}</span>
               </div>
             )}
 
@@ -184,7 +191,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2 text-white">
               <label className="cursor-pointer px-2.5 py-1 bg-white/20 hover:bg-white/30 backdrop-blur-xs rounded-md text-xs font-medium flex items-center gap-1">
                 <Upload className="w-3.5 h-3.5" />
-                <span>Nahrať súbor</span>
+                <span>{t('uploadFile')}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -198,7 +205,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
                   onClick={() => onChangeCoverUrl('')}
                   className="text-[10px] text-red-300 hover:text-red-200 underline mt-1"
                 >
-                  Odstrániť obrázok
+                  {t('removeImage')}
                 </button>
               )}
             </div>
@@ -212,13 +219,13 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
           <div>
             <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mb-1 flex items-center gap-1.5">
               <User className="w-3.5 h-3.5 text-neutral-400" />
-              Interprét (Artist):
+              {t('artistLabel')}
             </label>
             <input
               type="text"
-              value={artist}
+              value={artist || ''}
               onChange={(e) => onChangeArtist(e.target.value)}
-              placeholder="napr. Daft Punk"
+              placeholder={t('artistPlaceholder')}
               className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3.5 py-2 text-sm text-neutral-900 dark:text-white font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -227,13 +234,13 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
           <div>
             <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mb-1 flex items-center gap-1.5">
               <Disc className="w-3.5 h-3.5 text-neutral-400" />
-              Názov albumu (Album Title):
+              {t('albumLabel')}
             </label>
             <input
               type="text"
-              value={album}
+              value={album || ''}
               onChange={(e) => onChangeAlbum(e.target.value)}
-              placeholder="napr. Discovery"
+              placeholder={t('albumPlaceholder')}
               className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3.5 py-2 text-sm text-neutral-900 dark:text-white font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             />
           </div>
@@ -243,24 +250,24 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
             <div className="sm:col-span-1">
               <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mb-1 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-neutral-400" />
-                Rok vydania:
+                {t('yearLabel')}
               </label>
               <input
                 type="text"
-                value={year}
+                value={year || ''}
                 onChange={(e) => onChangeYear(e.target.value)}
-                placeholder="napr. 2001"
+                placeholder={t('yearPlaceholder')}
                 className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3.5 py-2 text-sm text-neutral-900 dark:text-white font-medium focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div className="sm:col-span-2">
               <label className="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mb-1 flex items-center gap-1.5">
                 <ImageIcon className="w-3.5 h-3.5 text-neutral-400" />
-                Alebo priamy link na obrázok (URL):
+                {t('directImageUrl')}
               </label>
               <input
                 type="url"
-                value={coverUrl.startsWith('data:') ? '(Nahraný obrázok)' : coverUrl}
+                value={coverUrl ? (coverUrl.startsWith('data:') ? t('uploadedImageTag') : coverUrl) : ''}
                 onChange={(e) => onChangeCoverUrl(e.target.value)}
                 placeholder="https://.../cover.jpg"
                 className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3.5 py-2 text-xs text-neutral-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
@@ -277,10 +284,10 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <h4 className="text-sm font-bold text-neutral-900 dark:text-white">
-              Zoznam skladieb ({tracks.length})
+              {t('tracklistHeading')} ({tracks.length})
             </h4>
             <span className="text-[11px] text-neutral-400">
-              (Zobrazuje sa na zadnom/chrbátovom obale Minidisku)
+              {t('tracklistHint')}
             </span>
           </div>
 
@@ -292,7 +299,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
               className="text-xs font-semibold px-2.5 py-1 rounded-md bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 text-neutral-700 dark:text-neutral-300 transition-colors flex items-center gap-1"
             >
               <ClipboardList className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Hromadné vloženie textu</span>
+              <span>{t('bulkPasteBtn')}</span>
             </button>
           </div>
         </div>
@@ -301,7 +308,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
         {isBulkOpen && (
           <div className="mb-4 p-3 bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-200 dark:border-neutral-700 rounded-xl space-y-2">
             <p className="text-xs text-neutral-600 dark:text-neutral-300">
-              Vložte zoznam skladieb z textu (každá skladba na nový riadok). Formát môže obsahovať čísla aj dĺžky (napr. <code className="text-indigo-600 dark:text-indigo-400">01. One More Time (5:20)</code>):
+              {t('bulkPastePrompt')}
             </p>
             <textarea
               rows={5}
@@ -316,7 +323,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
                 onClick={() => setIsBulkOpen(false)}
                 className="px-3 py-1 text-xs text-neutral-500 hover:text-neutral-700"
               >
-                Zrušiť
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -324,7 +331,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
                 className="px-3.5 py-1 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-md transition-all flex items-center gap-1"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Spracovať skladby</span>
+                <span>{t('processTracksBtn')}</span>
               </button>
             </div>
           </div>
@@ -340,7 +347,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
               {/* Number */}
               <input
                 type="text"
-                value={track.number}
+                value={track.number || ''}
                 onChange={(e) => handleTrackChange(idx, 'number', e.target.value)}
                 className="w-10 text-center font-mono text-xs font-semibold bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded px-1 py-1 text-neutral-700 dark:text-neutral-300"
               />
@@ -348,10 +355,10 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
               {/* Title */}
               <input
                 type="text"
-                value={track.title}
+                value={track.title || ''}
                 onChange={(e) => handleTrackChange(idx, 'title', e.target.value)}
                 className="flex-1 text-xs font-medium bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded px-2.5 py-1 text-neutral-900 dark:text-white"
-                placeholder="Názov skladby"
+                placeholder={t('trackTitlePlaceholder')}
               />
 
               {/* Duration */}
@@ -394,7 +401,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
 
           {tracks.length === 0 && (
             <p className="text-xs text-neutral-400 dark:text-neutral-500 py-3 text-center italic">
-              Zoznam skladieb je prázdny. Môžete pridať skladbu manuálne alebo vyhľadať album online.
+              {t('emptyTracklistMsg')}
             </p>
           )}
         </div>
@@ -405,7 +412,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
             type="text"
             value={newTrackTitle}
             onChange={(e) => setNewTrackTitle(e.target.value)}
-            placeholder="Pridať ďalšiu skladbu..."
+            placeholder={t('addNextTrackPlaceholder')}
             className="flex-1 bg-neutral-50 dark:bg-neutral-800/60 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs text-neutral-900 dark:text-white"
           />
           <button
@@ -414,7 +421,7 @@ export const AlbumMetadataEditor: React.FC<AlbumMetadataEditorProps> = ({
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-neutral-900 dark:bg-neutral-100 dark:text-neutral-900 hover:bg-neutral-800 disabled:opacity-40 transition-all flex items-center gap-1"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Pridať</span>
+            <span>{t('addBtn')}</span>
           </button>
         </form>
 

@@ -12,12 +12,15 @@ import { CaseLabelEditor } from './components/CaseLabelEditor';
 import { PreviewPanel } from './components/PreviewPanel';
 import { generateMinidiscPdf } from './utils/pdfExport';
 import { exportDiscsToCsv, parseCsvTracks } from './utils/csvExport';
-import { ChevronDown, ChevronUp, Layers, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from './i18n/LanguageContext';
 
 const LOCAL_STORAGE_KEY = 'minidisc_studio_discs_v2';
 const DARK_MODE_KEY = 'minidisc_studio_theme';
 
 export default function App() {
+  const { t } = useLanguage();
+
   // Discs state initialized from localStorage or default template
   const [discs, setDiscs] = useState<DiscData[]>(() => {
     try {
@@ -25,7 +28,14 @@ export default function App() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length === 6) {
-          return parsed;
+          return parsed.map((d: DiscData) => ({
+            ...d,
+            spineLabel: {
+              ...d.spineLabel,
+              format: d.spineLabel?.format === 'title-artist' && !d.isConfigured ? 'artist-title' : (d.spineLabel?.format || 'artist-title'),
+              showYear: d.spineLabel?.showYear !== undefined ? d.spineLabel.showYear : true,
+            },
+          }));
         }
       }
     } catch (e) {
@@ -92,7 +102,7 @@ export default function App() {
           return {
             ...d,
             isConfigured: true,
-            album: d.album.trim() || `Disk ${d.id}`,
+            album: d.album.trim() || `${t('disc')} ${d.id}`,
             lastUpdated: new Date().toISOString(),
           };
         }
@@ -104,7 +114,13 @@ export default function App() {
       setHasUnsavedChanges(false);
 
       const savedDisc = updatedDiscs.find((d) => d.id === activeDiscId);
-      setSaveBanner(`Disk ${activeDiscId} (${savedDisc?.album || ''} - ${savedDisc?.artist || 'Bez interpreta'}) bol úspešne uložený do databázy!`);
+      setSaveBanner(
+        t('saveSuccessBanner', {
+          id: activeDiscId,
+          album: savedDisc?.album || '',
+          artist: savedDisc?.artist || t('noArtist'),
+        })
+      );
       setTimeout(() => setSaveBanner(null), 3000);
     } catch (e) {
       console.error('Failed to save to localStorage:', e);
@@ -113,11 +129,11 @@ export default function App() {
 
   // Reset to default blank discs
   const handleResetData = () => {
-    if (window.confirm('Naozaj chcete vynulovať všetkých 6 diskov na prázdne počiatočné pozície?')) {
+    if (window.confirm(t('confirmReset'))) {
       setDiscs(defaultDiscs);
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(defaultDiscs));
       setHasUnsavedChanges(false);
-      setSaveBanner('Všetky disky boli obnovené na prázdne počiatočné pozície Disk 1–6.');
+      setSaveBanner(t('resetNotice'));
       setTimeout(() => setSaveBanner(null), 3000);
     }
   };
@@ -159,7 +175,7 @@ export default function App() {
       await generateMinidiscPdf(discs);
     } catch (err) {
       console.error('PDF export failed:', err);
-      alert('Export do PDF zlyhal. Skúste použiť tlačidlo "Tlačiť A4" pre priamu tlač.');
+      alert(t('pdfErrorAlert'));
     }
   };
 
@@ -188,7 +204,7 @@ export default function App() {
               year: parsed.year || prev.year,
               tracks: parsed.tracks.length > 0 ? parsed.tracks : prev.tracks,
             }));
-            setSaveBanner('Skladby boli úspešne importované z CSV súboru.');
+            setSaveBanner(t('csvImportSuccess'));
             setTimeout(() => setSaveBanner(null), 3000);
           }
         };
@@ -223,11 +239,11 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Workspace (Split View) */}
-      <main className="flex-1 max-w-7xl w-full mx-auto grid grid-cols-1 lg:grid-cols-12 gap-0 lg:divide-x lg:divide-neutral-200 dark:lg:divide-neutral-800">
+      {/* Main Workspace (Full-width dynamic layout stretching to the right window edge) */}
+      <main className="flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-hidden">
         
-        {/* Left Column: Form & Controls Editor (7 cols on lg) */}
-        <div className="lg:col-span-7 p-4 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-4rem)]">
+        {/* Left Column: Form & Controls Editor */}
+        <div className="w-full lg:w-[500px] xl:w-[560px] 2xl:w-[600px] shrink-0 p-4 sm:p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-4rem)] border-r border-neutral-200 dark:border-neutral-800 bg-white/70 dark:bg-neutral-900/70 backdrop-blur-xs">
           
           {/* STEP 1: Choose Disc (1 to 6) */}
           <DiscSelector
@@ -265,10 +281,10 @@ export default function App() {
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-                  Krok 4 · Vzhľad a štýl potlače
+                  {t('step4Title')}
                 </span>
                 <h3 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white">
-                  Dizajn 3 nálepiek pre Disk #{currentDisc.id}
+                  {t('designTitleForDisc', { id: currentDisc.id })}
                 </h3>
               </div>
             </div>
@@ -283,10 +299,7 @@ export default function App() {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
                   <span className="font-bold text-sm text-neutral-900 dark:text-white">
-                    1. Nálepka na disk (disklabel) · 38 × 54 mm
-                  </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-200/60 dark:bg-indigo-800/60 text-indigo-800 dark:text-indigo-200 font-semibold hidden sm:inline">
-                    Aktívna sekcia
+                    {t('sectionDiskTitle')}
                   </span>
                 </div>
                 {openSection === 'disk' ? (
@@ -319,7 +332,7 @@ export default function App() {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-neutral-400" />
                   <span className="font-bold text-sm text-neutral-800 dark:text-neutral-200">
-                    2. Nálepka na chrbát disku (spine label) · 54 × 5 mm
+                    {t('sectionSpineTitle')}
                   </span>
                 </div>
                 {openSection === 'spine' ? (
@@ -336,6 +349,8 @@ export default function App() {
                     onChangeStyle={(style) => updateCurrentDisc((d) => ({ ...d, spineLabel: style }))}
                     album={currentDisc.album}
                     artist={currentDisc.artist}
+                    year={currentDisc.year}
+                    diskLabelStyle={currentDisc.diskLabel}
                   />
                 </div>
               )}
@@ -351,7 +366,7 @@ export default function App() {
                 <div className="flex items-center gap-2.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-neutral-400" />
                   <span className="font-bold text-sm text-neutral-800 dark:text-neutral-200">
-                    3. Nálepka na obal (case label / J-card) · 70 × 70 mm
+                    {t('sectionCaseTitle')}
                   </span>
                 </div>
                 {openSection === 'case' ? (
@@ -368,6 +383,7 @@ export default function App() {
                     onChangeStyle={(style) => updateCurrentDisc((d) => ({ ...d, caseLabel: style }))}
                     album={currentDisc.album}
                     artist={currentDisc.artist}
+                    tracks={currentDisc.tracks}
                   />
                 </div>
               )}
@@ -377,13 +393,13 @@ export default function App() {
 
           {/* Quick Footer info */}
           <div className="text-center pt-4 pb-6 text-xs text-neutral-400 dark:text-neutral-500">
-            Minidisc Studio · Kompatibilné s originálnym formátom Sony MD kaziet & obalov
+            {t('footerNotice')}
           </div>
 
         </div>
 
-        {/* Right Column: Live Interactive Preview Panel (5 cols on lg) */}
-        <div className="lg:col-span-5 h-[calc(100vh-4rem)] sticky top-16 hidden lg:block overflow-hidden">
+        {/* Right Column: Dynamic Live Interactive Preview Panel stretching to right edge */}
+        <div className="flex-1 min-w-0 h-[calc(100vh-4rem)] sticky top-16 hidden lg:flex flex-col overflow-hidden bg-neutral-100 dark:bg-neutral-950">
           <PreviewPanel
             currentDisc={currentDisc}
             allDiscs={discs}
@@ -394,7 +410,7 @@ export default function App() {
         {/* Mobile / Tablet preview drawer (displayed below on small screens) */}
         <div className="lg:hidden p-4 border-t border-neutral-200 dark:border-neutral-800">
           <h3 className="font-bold text-base mb-3 text-neutral-900 dark:text-white">
-            Živý náhľad disku #{currentDisc.id}
+            {t('mobilePreviewTitle', { id: currentDisc.id })}
           </h3>
           <PreviewPanel
             currentDisc={currentDisc}

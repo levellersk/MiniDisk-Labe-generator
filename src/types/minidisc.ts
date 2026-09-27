@@ -19,6 +19,7 @@ export interface DiskLabelStyle {
   showMdLogo: boolean;
   mdLogoColor: 'auto' | 'white' | 'black' | 'gold' | 'custom';
   customLogoColor?: string;
+  showInsertionArrow?: boolean; // Šípka smeru vkladania do mechaniky (horný pravý roh)
   coverImage?: string;
   coverScale?: number;
   coverFit?: 'cover' | 'contain';
@@ -31,6 +32,8 @@ export interface SpineLabelStyle {
   fontSize: number;
   isBold: boolean;
   format: 'title-artist' | 'artist-title' | 'title-only';
+  showYear: boolean;
+  autoCondense: boolean;
   customText?: string;
 }
 
@@ -42,6 +45,7 @@ export interface CaseLabelStyle {
   overlayOpacity: number; // 0 to 100%
   overlayColor: string;
   backgroundImage?: string;
+  imageCropPosition?: 'center' | 'top' | 'bottom';
   showTracklist: boolean;
   tracklistColumns: 1 | 2;
   tracklistFontSize: number;

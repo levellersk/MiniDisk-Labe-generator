@@ -4,14 +4,13 @@ import {
   Pipette, 
   Type, 
   Bold, 
-  Sparkles, 
   Check, 
-  Eye, 
   Palette, 
   Sliders,
-  Maximize2
+  ArrowUp
 } from 'lucide-react';
 import { MiniDiscLogo } from './MiniDiscLogo';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface DiskLabelEditorProps {
   style: DiskLabelStyle;
@@ -21,7 +20,7 @@ interface DiskLabelEditorProps {
   year: string;
 }
 
-// Curated palette inspired by https://minidisc-labels.kaih.au/ and classic MD blank media
+// Curated palette inspired by classic MD blank media
 const COLOR_PRESETS = [
   { name: 'Vintage Beige', hex: '#f5eee6', border: '#e3d8cc' },
   { name: 'Midnight Onyx', hex: '#16171a', border: '#333538' },
@@ -38,21 +37,19 @@ const COLOR_PRESETS = [
 ];
 
 const FONT_OPTIONS = [
-  { id: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans (Moderný čistý)' },
-  { id: 'Syne', label: 'Syne (Výrazný audio display)' },
-  { id: 'Archivo', label: 'Archivo (Retro priemyselný grotesk)' },
-  { id: 'JetBrains Mono', label: 'JetBrains Mono (Techno & Kód)' },
-  { id: 'Georgia', label: 'Georgia / Serif (Klasický)' },
+  { id: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans (Modern Clean)' },
+  { id: 'Syne', label: 'Syne (Audio Display)' },
+  { id: 'Archivo', label: 'Archivo (Industrial Grotesk)' },
+  { id: 'JetBrains Mono', label: 'JetBrains Mono (Techno & Code)' },
+  { id: 'Georgia', label: 'Georgia / Serif (Classic)' },
 ];
 
 export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
   style,
   onChangeStyle,
-  album,
-  artist,
-  year,
 }) => {
-  const [hasEyeDropper, setHasEyeDropper] = useState<boolean>(() => {
+  const { t } = useLanguage();
+  const [hasEyeDropper] = useState<boolean>(() => {
     return typeof window !== 'undefined' && 'EyeDropper' in window;
   });
 
@@ -85,27 +82,18 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
       {/* Section Header */}
       <div className="flex items-center justify-between gap-3 pb-3 border-b border-neutral-200 dark:border-neutral-800">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Hlavná sekcia dizajnu
-            </span>
-          </div>
-          <h3 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <span>Nálepka na disk (disklabel)</span>
-            <span className="text-xs font-normal text-neutral-500 dark:text-neutral-400">
-              · 38 × 54 mm
-            </span>
+          <h3 className="text-base font-bold text-neutral-900 dark:text-white flex items-center gap-2">
+            <span>{t('sectionDiskTitle')}</span>
           </h3>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            Predná nálepka do výrezu kazety Minidisku (Sony / TDK formát).
+            {t('diskLabelSubtitleDetail')}
           </p>
         </div>
 
         {/* Badge MiniDisc logo */}
         <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 text-xs font-medium border border-neutral-200 dark:border-neutral-700">
           <MiniDiscLogo size={16} color="currentColor" />
-          <span>MD Kazeta</span>
+          <span>{t('mdCartridgeBadge')}</span>
         </div>
       </div>
 
@@ -114,7 +102,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
             <Palette className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Farba pozadia nálepky:</span>
+            <span>{t('bgColorLabel')}</span>
           </label>
           <span className="text-xs font-mono font-medium text-neutral-500">
             {style.backgroundColor.toUpperCase()}
@@ -159,14 +147,14 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
           <div className="relative flex items-center gap-2 bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-2.5 py-1.5">
             <input
               type="color"
-              value={style.backgroundColor}
+              value={style.backgroundColor || '#f5eee6'}
               onChange={(e) => updateField('backgroundColor', e.target.value)}
               className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
-              title="Vybrať vlastnú farbu"
+              title={t('customColor')}
             />
             <input
               type="text"
-              value={style.backgroundColor}
+              value={style.backgroundColor || '#f5eee6'}
               onChange={(e) => updateField('backgroundColor', e.target.value)}
               className="w-20 font-mono text-xs font-bold bg-transparent text-neutral-900 dark:text-white uppercase focus:outline-hidden"
               maxLength={7}
@@ -177,7 +165,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
           <button
             type="button"
             onClick={handleOpenEyeDropper}
-            title={hasEyeDropper ? 'Kvapkátko: vybrať farbu priamo z obrazovky alebo obalu' : 'Kvapkátko nie je podporované v tomto prehliadači'}
+            title={hasEyeDropper ? t('eyedropperTooltip') : t('eyedropperNotSupported')}
             disabled={!hasEyeDropper}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all border ${
               hasEyeDropper
@@ -186,12 +174,8 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
             }`}
           >
             <Pipette className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Kvapkátko</span>
+            <span>{t('eyedropper')}</span>
           </button>
-
-          <span className="text-[11px] text-neutral-400 ml-auto hidden sm:inline">
-            Inšpirované minidisc-labels.kaih.au
-          </span>
         </div>
       </div>
 
@@ -202,7 +186,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
         <div className="space-y-2">
           <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
             <Type className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Farba textu:</span>
+            <span>{t('textColorLabel')}</span>
           </label>
           <div className="flex items-center gap-2">
             <button
@@ -215,7 +199,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
               }`}
             >
               <span className="w-3 h-3 rounded-full bg-white border border-neutral-400" />
-              <span>Biela</span>
+              <span>{t('colorWhite')}</span>
             </button>
 
             <button
@@ -228,17 +212,17 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
               }`}
             >
               <span className="w-3 h-3 rounded-full bg-neutral-900 border border-neutral-700" />
-              <span>Tmavá</span>
+              <span>{t('colorDark')}</span>
             </button>
 
             {/* Custom text color input */}
             <div className="relative">
               <input
                 type="color"
-                value={style.textColor}
+                value={style.textColor || '#1a1d20'}
                 onChange={(e) => updateField('textColor', e.target.value)}
                 className="w-8 h-8 rounded cursor-pointer border border-neutral-300 dark:border-neutral-700 p-0.5 bg-transparent"
-                title="Vlastná farba textu"
+                title={t('customTextColor')}
               />
             </div>
           </div>
@@ -247,10 +231,10 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
         {/* Písmo (Font Family) */}
         <div className="space-y-2">
           <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-            Font textu:
+            {t('fontLabel')}
           </label>
           <select
-            value={style.fontFamily}
+            value={style.fontFamily || 'Plus Jakarta Sans'}
             onChange={(e) => updateField('fontFamily', e.target.value)}
             className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-1.5 text-xs font-medium text-neutral-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
           >
@@ -271,10 +255,10 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200">
-              Veľkosť písma (pt):
+              {t('fontSizeLabel')}
             </label>
             <span className="text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400">
-              {style.fontSize} pt
+              {style.fontSize ?? 10} pt
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -284,7 +268,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
               min="8"
               max="15"
               step="0.5"
-              value={style.fontSize}
+              value={style.fontSize ?? 10}
               onChange={(e) => updateField('fontSize', parseFloat(e.target.value))}
               className="flex-1 accent-indigo-600 cursor-pointer"
             />
@@ -296,10 +280,10 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
         <div className="flex items-center justify-between sm:justify-start gap-4">
           <div>
             <span className="block text-xs font-bold text-neutral-800 dark:text-neutral-200">
-              Tučné písmo (Bold):
+              {t('boldLabel')}
             </span>
             <span className="text-[11px] text-neutral-400">
-              Zvýraznenie názvu albumu
+              {t('boldDesc')}
             </span>
           </div>
           <button
@@ -312,7 +296,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
             }`}
           >
             <Bold className="w-3.5 h-3.5" />
-            <span>{style.isBold ? 'Zapnuté' : 'Vypnuté'}</span>
+            <span>{style.isBold ? t('enabled') : t('disabled')}</span>
           </button>
         </div>
 
@@ -322,20 +306,20 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
       <div className="space-y-2 pt-2 border-t border-neutral-100 dark:border-neutral-800/80">
         <label className="text-xs font-bold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
           <Sliders className="w-3.5 h-3.5 text-indigo-500" />
-          <span>Viditeľné položky na nálepke disku (Template prvky):</span>
+          <span>{t('visibleItemsLabel')}</span>
         </label>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           {/* Album */}
           <label className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             <input
               type="checkbox"
-              checked={style.showAlbum}
+              checked={!!style.showAlbum}
               onChange={(e) => updateField('showAlbum', e.target.checked)}
               className="rounded accent-indigo-600 w-4 h-4"
             />
             <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-              Album
+              {t('albumElement')}
             </span>
           </label>
 
@@ -343,12 +327,12 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
           <label className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             <input
               type="checkbox"
-              checked={style.showArtist}
+              checked={!!style.showArtist}
               onChange={(e) => updateField('showArtist', e.target.checked)}
               className="rounded accent-indigo-600 w-4 h-4"
             />
             <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-              Artist (Umelec)
+              {t('artistElement')}
             </span>
           </label>
 
@@ -356,12 +340,12 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
           <label className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             <input
               type="checkbox"
-              checked={style.showYear}
+              checked={!!style.showYear}
               onChange={(e) => updateField('showYear', e.target.checked)}
               className="rounded accent-indigo-600 w-4 h-4"
             />
             <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-              Year (Rok)
+              {t('yearElement')}
             </span>
           </label>
 
@@ -369,12 +353,26 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
           <label className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             <input
               type="checkbox"
-              checked={style.showMdLogo}
+              checked={!!style.showMdLogo}
               onChange={(e) => updateField('showMdLogo', e.target.checked)}
               className="rounded accent-indigo-600 w-4 h-4"
             />
             <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
-              <span>Logo MD</span>
+              <span>{t('mdLogoElement')}</span>
+            </span>
+          </label>
+
+          {/* Smer vkladania (Šípka) */}
+          <label className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            <input
+              type="checkbox"
+              checked={style.showInsertionArrow !== false}
+              onChange={(e) => updateField('showInsertionArrow', e.target.checked)}
+              className="rounded accent-indigo-600 w-4 h-4"
+            />
+            <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
+              <ArrowUp className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <span>{t('insertionArrowElement')}</span>
             </span>
           </label>
         </div>
@@ -383,22 +381,33 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
         {style.showMdLogo && (
           <div className="flex items-center gap-2 pt-2">
             <span className="text-[11px] font-semibold text-neutral-500">
-              Farba loga MiniDisc:
+              {t('mdLogoColorLabel')}
             </span>
-            {(['auto', 'white', 'black', 'gold'] as const).map((col) => (
-              <button
-                key={col}
-                type="button"
-                onClick={() => updateField('mdLogoColor', col)}
-                className={`text-[11px] font-semibold px-2 py-0.5 rounded capitalize transition-all ${
-                  style.mdLogoColor === col
-                    ? 'bg-indigo-600 text-white shadow-2xs'
-                    : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
-                }`}
-              >
-                {col === 'auto' ? 'Podľa textu' : col}
-              </button>
-            ))}
+            {(['auto', 'white', 'black', 'gold'] as const).map((col) => {
+              const labelText =
+                col === 'auto'
+                  ? t('logoColorAuto')
+                  : col === 'white'
+                  ? t('logoColorWhite')
+                  : col === 'black'
+                  ? t('logoColorBlack')
+                  : t('logoColorGold');
+
+              return (
+                <button
+                  key={col}
+                  type="button"
+                  onClick={() => updateField('mdLogoColor', col)}
+                  className={`text-[11px] font-semibold px-2 py-0.5 rounded capitalize transition-all ${
+                    style.mdLogoColor === col
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300'
+                  }`}
+                >
+                  {labelText}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>

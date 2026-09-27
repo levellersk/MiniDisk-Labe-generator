@@ -1,17 +1,22 @@
 import React from 'react';
 import { DiscData } from '../types/minidisc';
 import { MiniDiscLogo } from './MiniDiscLogo';
+import { CaseTracklist } from './CaseTracklist';
+import { CropMarks } from './CropMarks';
+import { InsertionArrow } from './InsertionArrow';
 
 interface PrintSheetProps {
   discs: DiscData[];
   scale?: number; // for interactive zoom preview
   highlightDiscId?: number;
+  showCropMarks?: boolean;
 }
 
 export const PrintSheet: React.FC<PrintSheetProps> = ({
   discs,
   scale = 1,
   highlightDiscId,
+  showCropMarks = true,
 }) => {
   // Case positions in 2 columns x 3 rows:
   // Col 0: discs[0] (Blue Hour), discs[2] (Signal Garden), discs[4] (Neon Civic)
@@ -33,7 +38,7 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
 
   return (
     <div
-      className="print-sheet-container bg-neutral-200/70 dark:bg-neutral-950 p-2 sm:p-6 flex items-center justify-center overflow-auto"
+      className="print-sheet-container w-full bg-neutral-200/70 dark:bg-neutral-950 p-2 sm:p-6 flex items-start justify-center overflow-auto"
       style={{ minHeight: '600px' }}
     >
       {/* 
@@ -51,22 +56,23 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
           minHeight: '297mm',
           transform: scale !== 1 ? `scale(${scale})` : undefined,
           transformOrigin: 'top center',
+          marginBottom: scale < 1 ? `-${Math.round(297 * (1 - scale))}mm` : undefined,
           boxSizing: 'border-box',
           padding: '10mm',
         }}
       >
         
-        {/* Top & Left Grid: 6 Case Labels (2 cols x 3 rows) */}
+        {/* Top & Left Grid: 6 Case Labels (2 cols x 3 rows of 70mm x 55mm) */}
         <div
           className="absolute"
           style={{
             top: '10mm',
             left: '10mm',
             width: '143mm',
-            height: '216mm',
+            height: '171mm',
             display: 'grid',
             gridTemplateColumns: '70mm 70mm',
-            gridTemplateRows: '70mm 70mm 70mm',
+            gridTemplateRows: '55mm 55mm 55mm',
             gap: '3mm',
           }}
         >
@@ -78,93 +84,87 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
             return (
               <div
                 key={`case-${disc.id}-${idx}`}
-                className={`relative overflow-hidden border border-neutral-300 ${
+                className={`relative overflow-visible ${
                   isHighlight ? 'ring-2 ring-indigo-500' : ''
                 }`}
                 style={{
                   width: '70mm',
-                  height: '70mm',
-                  backgroundColor: disc.caseLabel.backgroundColor || '#111',
-                  color: disc.caseLabel.textColor || '#fff',
-                  fontFamily: disc.caseLabel.fontFamily || 'sans-serif',
+                  height: '55mm',
                 }}
               >
-                {/* Background Artwork */}
-                {disc.coverUrl && (
+                {/* Inner printable label content */}
+                <div
+                  className="w-full h-full relative overflow-hidden border border-neutral-300 print:border-neutral-400"
+                  style={{
+                    backgroundColor: disc.caseLabel.backgroundColor || '#111',
+                    color: disc.caseLabel.textColor || '#fff',
+                    fontFamily: disc.caseLabel.fontFamily || 'sans-serif',
+                  }}
+                >
+                  {/* Background Artwork - Cropped top and bottom to fill 70x55mm */}
+                  {disc.coverUrl && (
+                    <div
+                      className="absolute inset-0 bg-cover"
+                      style={{
+                        backgroundImage: `url(${disc.coverUrl})`,
+                        backgroundPosition:
+                          disc.caseLabel.imageCropPosition === 'top'
+                            ? 'center top'
+                            : disc.caseLabel.imageCropPosition === 'bottom'
+                            ? 'center bottom'
+                            : 'center center',
+                      }}
+                    />
+                  )}
+
+                  {/* Scrim Overlay */}
                   <div
-                    className="absolute inset-0 bg-cover bg-center"
+                    className="absolute inset-0"
                     style={{
-                      backgroundImage: `url(${disc.coverUrl})`,
+                      backgroundColor: disc.caseLabel.overlayColor || '#000',
+                      opacity: (disc.caseLabel.overlayOpacity || 50) / 100,
                     }}
                   />
-                )}
 
-                {/* Scrim Overlay */}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundColor: disc.caseLabel.overlayColor || '#000',
-                    opacity: (disc.caseLabel.overlayOpacity || 50) / 100,
-                  }}
-                />
+                  {/* Content Overlay */}
+                  <div className="relative z-10 p-2.5 h-full flex flex-col justify-between">
+                    {/* Title & Artist */}
+                    <div className="min-w-0">
+                      <h3
+                        className="font-bold tracking-tight text-white leading-tight drop-shadow-xs truncate"
+                        style={{ fontSize: '10.5pt' }}
+                      >
+                        {disc.album}
+                      </h3>
+                      <p
+                        className="text-neutral-300 font-medium leading-normal drop-shadow-xs truncate"
+                        style={{ fontSize: '7.5pt' }}
+                      >
+                        {disc.artist} {disc.year ? `· ${disc.year}` : ''}
+                      </p>
+                    </div>
 
-                {/* Content Overlay */}
-                <div className="relative z-10 p-3 h-full flex flex-col justify-between">
-                  {/* Title & Artist */}
-                  <div>
-                    <h3
-                      className="font-bold tracking-tight text-white leading-tight drop-shadow-xs"
-                      style={{ fontSize: '13pt' }}
-                    >
-                      {disc.album}
-                    </h3>
-                    <p
-                      className="text-neutral-300 font-medium leading-normal drop-shadow-xs"
-                      style={{ fontSize: '8.5pt' }}
-                    >
-                      {disc.artist} {disc.year ? `· ${disc.year}` : ''}
-                    </p>
+                    {/* Real Tracklist on case card (Proportionally scaled to fit) */}
+                    {disc.caseLabel.showTracklist && disc.tracks && disc.tracks.length > 0 && (
+                      <div className="my-auto py-0.5 overflow-hidden max-h-[34mm]">
+                        <CaseTracklist
+                          tracks={disc.tracks}
+                          preferredColumns={disc.caseLabel.tracklistColumns}
+                        />
+                      </div>
+                    )}
+
+                    {/* Bottom Logo */}
+                    {disc.caseLabel.showMdLogo && (
+                      <div className="flex justify-end pt-0.5">
+                        <MiniDiscLogo size={12} color="#ffffff" />
+                      </div>
+                    )}
                   </div>
-
-                  {/* Tracklist on case card */}
-                  {disc.caseLabel.showTracklist && disc.tracks.length > 0 && (
-                    <div className="my-auto space-y-0.5">
-                      {disc.tracks.slice(0, 6).map((t) => (
-                        <div
-                          key={t.id}
-                          className="flex items-center gap-1.5 text-neutral-200"
-                          style={{ fontSize: '7pt', lineHeight: 1.25 }}
-                        >
-                          <span className="font-mono text-neutral-400 opacity-80">
-                            {t.number}
-                          </span>
-                          <span className="truncate font-medium">{t.title}</span>
-                        </div>
-                      ))}
-                      {disc.tracks.length > 6 && (
-                        <span
-                          className="text-neutral-400 italic block mt-0.5"
-                          style={{ fontSize: '6pt' }}
-                        >
-                          + {disc.tracks.length - 6} ďalších
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Bottom Logo */}
-                  {disc.caseLabel.showMdLogo && (
-                    <div className="flex justify-end">
-                      <MiniDiscLogo size={14} color="#ffffff" />
-                    </div>
-                  )}
                 </div>
 
-                {/* Cut crop corner guides */}
-                <span className="absolute top-0 left-0 w-1.5 h-1.5 border-t border-l border-white/50" />
-                <span className="absolute top-0 right-0 w-1.5 h-1.5 border-t border-r border-white/50" />
-                <span className="absolute bottom-0 left-0 w-1.5 h-1.5 border-b border-l border-white/50" />
-                <span className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b border-r border-white/50" />
+                {/* Pre-press crop marks extending outside cutting edge */}
+                <CropMarks show={showCropMarks} />
               </div>
             );
           })}
@@ -184,7 +184,7 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
         >
           {diskTopColumn.map((disc, idx) => {
             if (!disc) return null;
-            return renderCartridgeLabel(disc, highlightDiscId === disc.id, `top-${idx}`);
+            return renderCartridgeLabel(disc, highlightDiscId === disc.id, `top-${idx}`, showCropMarks);
           })}
         </div>
 
@@ -192,7 +192,7 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
         <div
           className="absolute"
           style={{
-            top: '230mm',
+            top: '190mm',
             left: '83mm',
             display: 'flex',
             gap: '3mm',
@@ -200,7 +200,7 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
         >
           {diskBottomRow.map((disc, idx) => {
             if (!disc) return null;
-            return renderCartridgeLabel(disc, highlightDiscId === disc.id, `bottom-${idx}`);
+            return renderCartridgeLabel(disc, highlightDiscId === disc.id, `bottom-${idx}`, showCropMarks);
           })}
         </div>
 
@@ -208,37 +208,82 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
         <div
           className="absolute"
           style={{
-            top: '230mm',
+            top: '190mm',
             left: '10mm',
             width: '65mm',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.2mm',
+            gap: '2mm',
           }}
         >
           {discs.map((disc) => {
             const isHighlight = highlightDiscId === disc.id;
+            const format = disc.spineLabel.format || 'artist-title';
+            const spineText =
+              format === 'title-only'
+                ? disc.album
+                : format === 'title-artist'
+                ? (disc.artist ? `${disc.album} : ${disc.artist}` : disc.album)
+                : (disc.artist ? `${disc.artist} - ${disc.album}` : disc.album);
+
+            const showYear = disc.spineLabel.showYear !== false && !!disc.year;
+            const isTextLong = (spineText.length + (showYear ? 6 : 0)) > 24;
+
             return (
               <div
                 key={`spine-${disc.id}`}
-                className={`border border-neutral-300 px-2 flex items-center justify-between overflow-hidden relative ${
+                className={`relative overflow-visible ${
                   isHighlight ? 'ring-1 ring-indigo-500' : ''
                 }`}
                 style={{
                   width: '65mm',
                   height: '5.5mm',
-                  backgroundColor: disc.spineLabel.backgroundColor || disc.diskLabel.backgroundColor,
-                  color: disc.spineLabel.textColor || disc.diskLabel.textColor,
-                  fontFamily: disc.spineLabel.fontFamily || disc.diskLabel.fontFamily,
                 }}
               >
-                <span
-                  className="font-bold truncate"
-                  style={{ fontSize: '6.5pt', lineHeight: 1 }}
+                <div
+                  className="w-full h-full border border-neutral-300 print:border-neutral-400 px-2 flex items-center justify-between overflow-hidden relative select-none"
+                  style={{
+                    backgroundColor: disc.spineLabel.backgroundColor || disc.diskLabel.backgroundColor,
+                    color: disc.spineLabel.textColor || disc.diskLabel.textColor,
+                    fontFamily: disc.spineLabel.fontFamily || disc.diskLabel.fontFamily,
+                  }}
                 >
-                  {disc.album} : {disc.artist}
-                </span>
-                <MiniDiscLogo size={9} color={disc.spineLabel.textColor || disc.diskLabel.textColor} />
+                  {/* Left Text: Album & Artist (Condensed if long) */}
+                  <div
+                    className="min-w-0 flex-1 truncate"
+                    style={{
+                      transform: isTextLong && disc.spineLabel.autoCondense !== false ? 'scaleX(0.85)' : undefined,
+                      transformOrigin: 'left center',
+                      letterSpacing: isTextLong && disc.spineLabel.autoCondense !== false ? '-0.03em' : 'normal',
+                    }}
+                  >
+                    <span
+                      className="font-bold truncate block"
+                      style={{ fontSize: `${disc.spineLabel.fontSize || 6.5}pt`, lineHeight: 1 }}
+                    >
+                      {spineText}
+                    </span>
+                  </div>
+
+                  {/* Right Text: Year aligned to the right (same font family, size and weight, no MD logo) */}
+                  {showYear && (
+                    <div className="shrink-0 pl-1.5">
+                      <span
+                        style={{
+                          fontFamily: disc.spineLabel.fontFamily || disc.diskLabel.fontFamily || 'inherit',
+                          fontSize: `${disc.spineLabel.fontSize || 6.5}pt`,
+                          fontWeight: disc.spineLabel.isBold ? 700 : 500,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {disc.year}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Spine Crop Marks */}
+                <CropMarks show={showCropMarks} />
               </div>
             );
           })}
@@ -281,7 +326,7 @@ export const PrintSheet: React.FC<PrintSheetProps> = ({
 };
 
 // Render function for a single standard Minidisc cartridge label (disklabel: 38mm x 54mm)
-function renderCartridgeLabel(disc: DiscData, isHighlight: boolean, key: string) {
+function renderCartridgeLabel(disc: DiscData, isHighlight: boolean, key: string, showCropMarks: boolean = true) {
   const { diskLabel } = disc;
   const logoColor =
     diskLabel.mdLogoColor === 'white'
@@ -295,88 +340,101 @@ function renderCartridgeLabel(disc: DiscData, isHighlight: boolean, key: string)
   return (
     <div
       key={key}
-      className={`relative overflow-hidden border border-neutral-300 p-2 flex flex-col justify-between select-none ${
+      className={`relative overflow-visible ${
         isHighlight ? 'ring-2 ring-indigo-500' : ''
       }`}
       style={{
         width: '38mm',
         height: '54mm',
-        backgroundColor: diskLabel.backgroundColor,
-        color: diskLabel.textColor,
-        fontFamily: diskLabel.fontFamily || 'sans-serif',
-        boxSizing: 'border-box',
       }}
     >
-      {/* Album Title at top */}
-      {diskLabel.showAlbum && (
-        <div className="overflow-hidden">
-          <h4
-            className="leading-tight truncate"
-            style={{
-              fontSize: `${diskLabel.fontSize}pt`,
-              fontWeight: diskLabel.isBold ? 700 : 500,
-            }}
-          >
-            {disc.album}
-          </h4>
-        </div>
-      )}
-
-      {/* Album Cover in center (Square) */}
+      {/* Inner label content */}
       <div
-        className="w-full aspect-square my-auto rounded-sm overflow-hidden bg-black/10 border border-black/10 relative"
+        className="w-full h-full relative overflow-hidden border border-neutral-300 print:border-neutral-400 p-2 flex flex-col justify-between select-none"
         style={{
-          maxHeight: '30mm',
+          backgroundColor: diskLabel.backgroundColor,
+          color: diskLabel.textColor,
+          fontFamily: diskLabel.fontFamily || 'sans-serif',
+          boxSizing: 'border-box',
         }}
       >
-        {disc.coverUrl ? (
-          <img
-            src={disc.coverUrl}
-            alt={disc.album}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs opacity-40">
-            MD Cover
-          </div>
-        )}
-      </div>
-
-      {/* Artist & Year at bottom with MD Logo */}
-      <div className="flex items-end justify-between gap-1 overflow-hidden mt-0.5">
-        <div className="min-w-0">
-          {diskLabel.showArtist && (
-            <p
-              className="truncate font-semibold leading-tight"
-              style={{ fontSize: `${Math.max(6, diskLabel.fontSize - 3)}pt` }}
+        {/* Top Header: Album Title (left) & Insertion Arrow (top right) */}
+        <div className="flex items-start justify-between gap-1 overflow-hidden min-h-[14px]">
+          {diskLabel.showAlbum ? (
+            <h4
+              className="leading-tight truncate flex-1"
+              style={{
+                fontSize: `${diskLabel.fontSize}pt`,
+                fontWeight: diskLabel.isBold ? 700 : 500,
+              }}
             >
-              {disc.artist}
-            </p>
+              {disc.album}
+            </h4>
+          ) : (
+            <div className="flex-1" />
           )}
-          {diskLabel.showYear && disc.year && (
-            <p
-              className="opacity-75 leading-tight"
-              style={{ fontSize: `${Math.max(5.5, diskLabel.fontSize - 4.5)}pt` }}
-            >
-              {disc.year}
-            </p>
+
+          {/* Insertion arrow top-right */}
+          {diskLabel.showInsertionArrow !== false && (
+            <div className="shrink-0 pl-1 pt-0.5" title="Smer vkladania disku">
+              <InsertionArrow size={9.5} color={diskLabel.textColor} />
+            </div>
           )}
         </div>
 
-        {/* MD Logo */}
-        {diskLabel.showMdLogo && (
-          <div className="shrink-0 pb-0.5">
-            <MiniDiscLogo size={13} color={logoColor} />
+        {/* Album Cover in center (Square) */}
+        <div
+          className="w-full aspect-square my-auto rounded-sm overflow-hidden bg-black/10 border border-black/10 relative"
+          style={{
+            maxHeight: '30mm',
+          }}
+        >
+          {disc.coverUrl ? (
+            <img
+              src={disc.coverUrl}
+              alt={disc.album}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xs opacity-40">
+              MD Cover
+            </div>
+          )}
+        </div>
+
+        {/* Artist & Year at bottom with MD Logo */}
+        <div className="flex items-end justify-between gap-1 overflow-hidden mt-0.5">
+          <div className="min-w-0">
+            {diskLabel.showArtist && (
+              <p
+                className="truncate font-semibold leading-tight"
+                style={{ fontSize: `${Math.max(6, diskLabel.fontSize - 3)}pt` }}
+              >
+                {disc.artist}
+              </p>
+            )}
+            {diskLabel.showYear && disc.year && (
+              <p
+                className="opacity-75 leading-tight"
+                style={{ fontSize: `${Math.max(5.5, diskLabel.fontSize - 4.5)}pt` }}
+              >
+                {disc.year}
+              </p>
+            )}
           </div>
-        )}
+
+          {/* MD Logo */}
+          {diskLabel.showMdLogo && (
+            <div className="shrink-0 pb-0.5">
+              <MiniDiscLogo size={13} color={logoColor} />
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Cutting crop corners */}
-      <span className="absolute top-0 left-0 w-1 h-1 border-t border-l border-neutral-400" />
-      <span className="absolute top-0 right-0 w-1 h-1 border-t border-r border-neutral-400" />
-      <span className="absolute bottom-0 left-0 w-1 h-1 border-b border-l border-neutral-400" />
-      <span className="absolute bottom-0 right-0 w-1 h-1 border-b border-r border-neutral-400" />
+      {/* Pre-press crop marks extending outside cutting edge */}
+      <CropMarks show={showCropMarks} />
     </div>
   );
 }

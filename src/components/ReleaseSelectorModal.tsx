@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ReleaseSearchResult, TrackItem } from '../types/minidisc';
 import { X, Check, Disc, Calendar, MapPin, ListMusic, Loader2 } from 'lucide-react';
 import { getFullReleaseDetails, optimizeImageForPrint } from '../services/musicApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface ReleaseSelectorModalProps {
   isOpen: boolean;
@@ -23,6 +24,7 @@ export const ReleaseSelectorModal: React.FC<ReleaseSelectorModalProps> = ({
   results,
   onSelectRelease,
 }) => {
+  const { t } = useLanguage();
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   if (!isOpen) return null;
@@ -57,10 +59,10 @@ export const ReleaseSelectorModal: React.FC<ReleaseSelectorModalProps> = ({
         <div className="px-5 py-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
           <div>
             <h3 className="text-lg font-bold text-neutral-900 dark:text-white">
-              Výber verzie albumu ({results.length} nájdených)
+              {t('releaseModalTitle', { count: results.length })}
             </h3>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              Našli sme viacero vydaní tohto albumu. Zvoľte požadovanú edíciu.
+              {t('releaseModalDesc')}
             </p>
           </div>
           <button
@@ -91,79 +93,68 @@ export const ReleaseSelectorModal: React.FC<ReleaseSelectorModalProps> = ({
                         referrerPolicy="no-referrer"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Disc className="w-6 h-6 text-neutral-400" />
+                      <div className="w-full h-full flex items-center justify-center text-neutral-400">
+                        <Disc className="w-6 h-6" />
                       </div>
                     )}
                   </div>
 
-                  {/* Info */}
+                  {/* Release Info */}
                   <div className="min-w-0">
                     <h4 className="text-sm font-bold text-neutral-900 dark:text-white truncate">
                       {rel.title}
                     </h4>
-                    <p className="text-xs text-neutral-600 dark:text-neutral-300 font-medium truncate">
+                    <p className="text-xs text-neutral-600 dark:text-neutral-300 truncate">
                       {rel.artist}
                     </p>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+                    <div className="flex flex-wrap items-center gap-2 mt-1 text-[11px] text-neutral-400">
                       {rel.year && (
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {rel.year}
+                          <span>{rel.year}</span>
                         </span>
                       )}
                       {rel.country && (
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
-                          {rel.country}
+                          <span>{rel.country}</span>
                         </span>
                       )}
                       {rel.trackCount && (
                         <span className="flex items-center gap-1">
                           <ListMusic className="w-3 h-3" />
-                          {rel.trackCount} skladieb
+                          <span>{rel.trackCount} {t('tracksCount')}</span>
                         </span>
                       )}
-                      {rel.label && (
-                        <span className="truncate max-w-[140px]">
-                          {rel.label}
-                        </span>
-                      )}
+                      <span className="uppercase text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700">
+                        {rel.provider}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Select button */}
+                {/* Choose button */}
                 <button
+                  type="button"
+                  disabled={isLoadingThis || loadingId !== null}
                   onClick={() => handleChoose(rel)}
-                  disabled={!!loadingId}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all shrink-0 flex items-center gap-1.5 shadow-2xs"
+                  className="px-3.5 py-2 rounded-lg text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0"
                 >
                   {isLoadingThis ? (
                     <>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Načítavam...</span>
+                      <span>{t('loadingRelease')}</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-3.5 h-3.5" />
-                      <span>Zvoliť</span>
+                      <span>{t('chooseBtn')}</span>
                     </>
                   )}
                 </button>
               </div>
             );
           })}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-900/50 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors"
-          >
-            Zrušiť
-          </button>
         </div>
 
       </div>

@@ -12,28 +12,35 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
   doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, 210, 297, 'F');
 
-  // Thin cutting lines helper
+  // Professional pre-press crop marks helper (Orezávacie značky)
   const drawCutGuides = (x: number, y: number, w: number, h: number) => {
-    doc.setDrawColor(210, 210, 210);
-    doc.setLineWidth(0.1);
+    // 1. Fine hairline border around label perimeter (helpful for scissors cutting)
+    doc.setDrawColor(205, 205, 205);
+    doc.setLineWidth(0.08);
     doc.rect(x, y, w, h, 'S');
 
-    // Small corner tick marks extending 2mm outward
-    const tick = 2;
-    doc.setDrawColor(160, 160, 160);
-    doc.setLineWidth(0.15);
-    // top-left
-    doc.line(x - tick, y, x, y);
-    doc.line(x, y - tick, x, y);
-    // top-right
-    doc.line(x + w, y, x + w + tick, y);
-    doc.line(x + w, y - tick, x + w, y);
-    // bottom-left
-    doc.line(x - tick, y + h, x, y + h);
-    doc.line(x, y + h, x, y + h + tick);
-    // bottom-right
-    doc.line(x + w, y + h, x + w + tick, y + h);
-    doc.line(x + w, y + h, x + w, y + h + tick);
+    // 2. High-precision exterior tick marks for ruler & craft knife cutting
+    // Length: 3.2mm, Gap from border: 0.8mm (prevents visible ink on cut sticker)
+    const tickLen = 3.2;
+    const gap = 0.8;
+    doc.setDrawColor(50, 50, 50); // High contrast dark marks for print
+    doc.setLineWidth(0.2);
+
+    // Top-Left corner
+    doc.line(x, y - gap - tickLen, x, y - gap); // vertical tick up
+    doc.line(x - gap - tickLen, y, x - gap, y); // horizontal tick left
+
+    // Top-Right corner
+    doc.line(x + w, y - gap - tickLen, x + w, y - gap); // vertical tick up
+    doc.line(x + w + gap, y, x + w + gap + tickLen, y); // horizontal tick right
+
+    // Bottom-Left corner
+    doc.line(x, y + h + gap, x, y + h + gap + tickLen); // vertical tick down
+    doc.line(x - gap - tickLen, y + h, x - gap, y + h); // horizontal tick left
+
+    // Bottom-Right corner
+    doc.line(x + w, y + h + gap, x + w, y + h + gap + tickLen); // vertical tick down
+    doc.line(x + w + gap, y + h, x + w + gap + tickLen, y + h); // horizontal right
   };
 
   // Helper to parse hex color to RGB
@@ -47,14 +54,15 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
   };
 
   // 1. Draw 6 Case Labels (Obaly) - 2 columns x 3 rows on the left
-  // Dimensions: 70mm x 70mm
+  // 1. Draw 6 Case Labels (Obaly na krabičku - case label / J-card)
+  // Dimensions: 70mm width x 55mm height (2 columns x 3 rows)
   const casePositions = [
     { x: 10, y: 10, discIdx: 0 },
     { x: 83, y: 10, discIdx: 1 },
-    { x: 10, y: 83, discIdx: 2 },
-    { x: 83, y: 83, discIdx: 3 },
-    { x: 10, y: 156, discIdx: 4 },
-    { x: 83, y: 156, discIdx: 5 },
+    { x: 10, y: 68, discIdx: 2 },
+    { x: 83, y: 68, discIdx: 3 },
+    { x: 10, y: 126, discIdx: 4 },
+    { x: 83, y: 126, discIdx: 5 },
   ];
 
   for (const pos of casePositions) {
@@ -62,21 +70,38 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
     if (!disc) continue;
     const { x, y } = pos;
     const w = 70;
-    const h = 70;
+    const h = 55;
 
     // Fill background
     const bgRgb = hexToRgb(disc.caseLabel.backgroundColor);
     doc.setFillColor(...bgRgb);
     doc.rect(x, y, w, h, 'F');
 
-    // Add cover image if exists
+    // Add cover image cropped top and bottom to fill 70x55mm format
     if (disc.coverUrl) {
       try {
-        doc.addImage(disc.coverUrl, 'JPEG', x, y, w, h, undefined, 'FAST');
+        const cropPos = disc.caseLabel.imageCropPosition || 'center';
+        // Album art is square (70 x 70 mm), cropped to 70 x 55 mm
+        const imgSize = 70;
+        const imgY = cropPos === 'top' ? y : cropPos === 'bottom' ? y - 15 : y - 7.5;
+
+        // @ts-ignore
+        if (doc.saveGraphicsState && doc.clip && doc.restoreGraphicsState) {
+          // @ts-ignore
+          doc.saveGraphicsState();
+          doc.rect(x, y, w, h);
+          // @ts-ignore
+          doc.clip();
+          doc.addImage(disc.coverUrl, 'JPEG', x, imgY, imgSize, imgSize, undefined, 'FAST');
+          // @ts-ignore
+          doc.restoreGraphicsState();
+        } else {
+          doc.addImage(disc.coverUrl, 'JPEG', x, y, w, h, undefined, 'FAST');
+        }
+
         // Overlay for readability
         const overlayOpacity = (disc.caseLabel.overlayOpacity || 50) / 100;
         doc.setFillColor(0, 0, 0);
-        // jsPDF GState if available, or simulated
         // @ts-ignore
         if (doc.setGState) {
           // @ts-ignore
@@ -94,37 +119,85 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
     const textRgb = hexToRgb(disc.caseLabel.textColor);
     doc.setTextColor(...textRgb);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.text(disc.album, x + 4, y + 8, { maxWidth: w - 8 });
+    doc.setFontSize(9.5);
+    doc.text(disc.album, x + 3.5, y + 6.5, { maxWidth: w - 7 });
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    const subText = disc.year ? `${disc.artist} - ${disc.year}` : disc.artist;
-    doc.text(subText, x + 4, y + 13, { maxWidth: w - 8 });
+    doc.setFontSize(6.8);
+    const subText = disc.year ? `${disc.artist} · ${disc.year}` : disc.artist;
+    doc.text(subText, x + 3.5, y + 10.5, { maxWidth: w - 7 });
 
-    // Tracklist
-    if (disc.caseLabel.showTracklist && disc.tracks.length > 0) {
-      doc.setFontSize(6.5);
-      let ty = y + 21;
-      const visibleTracks = disc.tracks.slice(0, 7);
-      for (const track of visibleTracks) {
-        doc.text(`${track.number} ${track.title}`, x + 4, ty, { maxWidth: w - 16 });
-        ty += 3.8;
-      }
-      if (disc.tracks.length > 7) {
-        doc.setFontSize(5.5);
-        doc.text(`+ ${disc.tracks.length - 7} ďalších skladieb`, x + 4, ty);
+    // Real Tracklist: dynamically scaled according to real track count
+    if (disc.caseLabel.showTracklist && disc.tracks && disc.tracks.length > 0) {
+      const count = disc.tracks.length;
+      const isTwoCols = disc.caseLabel.tracklistColumns === 2 || count > 8;
+
+      if (isTwoCols) {
+        const half = Math.ceil(count / 2);
+        const col1 = disc.tracks.slice(0, half);
+        const col2 = disc.tracks.slice(half);
+
+        let fontSize = 5.8;
+        let lineStep = 3.0;
+        if (half <= 6) {
+          fontSize = 5.8;
+          lineStep = 3.0;
+        } else if (half <= 9) {
+          fontSize = 4.9;
+          lineStep = 2.5;
+        } else {
+          fontSize = 4.3;
+          lineStep = 2.0;
+        }
+
+        doc.setFontSize(fontSize);
+        let ty1 = y + 15;
+        for (const track of col1) {
+          doc.text(`${track.number} ${track.title}`, x + 3.5, ty1, { maxWidth: 30 });
+          ty1 += lineStep;
+        }
+
+        let ty2 = y + 15;
+        for (const track of col2) {
+          doc.text(`${track.number} ${track.title}`, x + 35.5, ty2, { maxWidth: 30 });
+          ty2 += lineStep;
+        }
+      } else {
+        // Single column
+        let fontSize = 6.5;
+        let lineStep = 3.6;
+        if (count <= 5) {
+          fontSize = 6.9;
+          lineStep = 3.9;
+        } else if (count <= 8) {
+          fontSize = 5.8;
+          lineStep = 3.1;
+        } else {
+          fontSize = 5.0;
+          lineStep = 2.6;
+        }
+
+        doc.setFontSize(fontSize);
+        let ty = y + 15;
+        for (const track of disc.tracks) {
+          doc.text(`${track.number} ${track.title}`, x + 3.5, ty, { maxWidth: w - 7 });
+          ty += lineStep;
+        }
       }
     }
 
-    // MiniDisc emblem bottom-right
+    // Authentic MiniDisc squircle emblem bottom-right
     if (disc.caseLabel.showMdLogo) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(5.5);
+      const bx = x + w - 7.2;
+      const by = y + h - 6.8;
       doc.setDrawColor(...textRgb);
+      doc.setTextColor(...textRgb);
       doc.setLineWidth(0.2);
-      doc.rect(x + w - 7, y + h - 7, 5, 5, 'S');
-      doc.text('MD', x + w - 5.7, y + h - 3.5);
+      doc.roundedRect(bx, by, 5.2, 5.2, 1.0, 1.0, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(3.1);
+      doc.text('Mini', bx + 1.1, by + 2.3);
+      doc.text('Disc', bx + 1.1, by + 4.2);
     }
 
     drawCutGuides(x, y, w, h);
@@ -138,9 +211,9 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
     { x: 159, y: 67, discIdx: 1 },
     { x: 159, y: 124, discIdx: 2 },
     // Bottom row 3
-    { x: 83, y: 228, discIdx: 4 },
-    { x: 124, y: 228, discIdx: 5 },
-    { x: 165, y: 228, discIdx: 3 },
+    { x: 83, y: 190, discIdx: 4 },
+    { x: 124, y: 190, discIdx: 5 },
+    { x: 165, y: 190, discIdx: 3 },
   ];
 
   for (const pos of diskPositions) {
@@ -158,11 +231,30 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
     const textRgb = hexToRgb(disc.diskLabel.textColor);
     doc.setTextColor(...textRgb);
 
-    // Title at top
+    // Title at top (leave room on right for insertion arrow if enabled)
+    const hasArrow = disc.diskLabel.showInsertionArrow !== false;
     if (disc.diskLabel.showAlbum) {
       doc.setFont('helvetica', disc.diskLabel.isBold ? 'bold' : 'normal');
       doc.setFontSize(7.5);
-      doc.text(disc.album, x + 2.5, y + 5.5, { maxWidth: w - 5 });
+      doc.text(disc.album, x + 2.5, y + 5.5, { maxWidth: w - 5 - (hasArrow ? 5 : 0) });
+    }
+
+    // Insertion direction arrow in top right corner
+    if (hasArrow) {
+      const ax = x + w - 4.8;
+      const ay = y + 2.0;
+      doc.setFillColor(...textRgb);
+      doc.setDrawColor(...textRgb);
+      doc.setLineWidth(0.1);
+      // Arrowhead pointing up
+      doc.triangle(
+        ax, ay + 2.3,
+        ax + 2.6, ay + 2.3,
+        ax + 1.3, ay,
+        'FD'
+      );
+      // Stem
+      doc.rect(ax + 0.9, ay + 2.3, 0.8, 1.8, 'F');
     }
 
     // Album cover artwork square in middle
@@ -193,14 +285,27 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
       doc.text(disc.year, x + 2.5, bY + 4);
     }
 
-    // MiniDisc logo in bottom right
+    // Authentic MiniDisc squircle logo in bottom right
     if (disc.diskLabel.showMdLogo) {
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4.5);
-      doc.setDrawColor(...textRgb);
+      const bx = x + w - 6.8;
+      const by = y + h - 6.8;
+      const logoColorHex =
+        disc.diskLabel.mdLogoColor === 'white'
+          ? '#ffffff'
+          : disc.diskLabel.mdLogoColor === 'black'
+          ? '#111111'
+          : disc.diskLabel.mdLogoColor === 'gold'
+          ? '#d4af37'
+          : disc.diskLabel.textColor;
+      const logoRgb = hexToRgb(logoColorHex);
+      doc.setDrawColor(...logoRgb);
+      doc.setTextColor(...logoRgb);
       doc.setLineWidth(0.2);
-      doc.rect(x + w - 6.5, y + h - 6.5, 4.5, 4.5, 'S');
-      doc.text('MD', x + w - 5.5, y + h - 3.4);
+      doc.roundedRect(bx, by, 5.0, 5.0, 1.0, 1.0, 'S');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(2.9);
+      doc.text('Mini', bx + 1.0, by + 2.2);
+      doc.text('Disc', bx + 1.0, by + 4.1);
     }
 
     drawCutGuides(x, y, w, h);
@@ -209,7 +314,7 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
   // 3. Draw 6 Spine Labels (Chrbtové nálepky)
   // Size: 54mm width x 5mm height
   const spineStartX = 10;
-  const spineStartY = 230;
+  const spineStartY = 190;
   const spineW = 60;
   const spineH = 5;
 
@@ -224,10 +329,33 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
 
     const textRgb = hexToRgb(disc.spineLabel.textColor || disc.diskLabel.textColor);
     doc.setTextColor(...textRgb);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(5.5);
-    const spineText = `${disc.album} : ${disc.artist}`;
-    doc.text(spineText, spineStartX + 2, sy + 3.6, { maxWidth: spineW - 4 });
+
+    const format = disc.spineLabel.format || 'artist-title';
+    const spineText =
+      format === 'title-only'
+        ? disc.album
+        : format === 'title-artist'
+        ? (disc.artist ? `${disc.album} : ${disc.artist}` : disc.album)
+        : (disc.artist ? `${disc.artist} - ${disc.album}` : disc.album);
+
+    const showYear = disc.spineLabel.showYear !== false && !!disc.year;
+    const yearWidth = showYear ? 8 : 0;
+    const isLong = (spineText.length + (showYear ? 6 : 0)) > 24;
+
+    // Use smaller / condensed font if title is long
+    const fontSize = isLong && disc.spineLabel.autoCondense !== false ? 4.8 : (disc.spineLabel.fontSize ? Math.min(5.8, disc.spineLabel.fontSize * 0.65) : 5.4);
+    doc.setFont('helvetica', disc.spineLabel.isBold ? 'bold' : 'normal');
+    doc.setFontSize(fontSize);
+
+    // Left title & artist
+    doc.text(spineText, spineStartX + 2, sy + 3.5, { maxWidth: spineW - yearWidth - 3 });
+
+    // Right-aligned Year (same font size, weight and style, no MD logo)
+    if (showYear) {
+      doc.setFont('helvetica', disc.spineLabel.isBold ? 'bold' : 'normal');
+      doc.setFontSize(fontSize);
+      doc.text(disc.year, spineStartX + spineW - 2, sy + 3.5, { align: 'right' });
+    }
 
     drawCutGuides(spineStartX, sy, spineW, spineH);
   }

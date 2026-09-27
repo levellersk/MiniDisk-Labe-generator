@@ -4,14 +4,11 @@ import {
   Search, 
   Loader2, 
   Save, 
-  Globe, 
   Check, 
   Sparkles, 
-  Music,
-  ExternalLink,
-  Layers
 } from 'lucide-react';
 import { searchAlbumOnline, getFullReleaseDetails, optimizeImageForPrint } from '../services/musicApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface AlbumSearchProps {
   onApplyAlbumData: (data: {
@@ -34,9 +31,8 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
   onOpenMultiReleaseModal,
   onSaveToDatabase,
   hasUnsavedChanges,
-  currentArtist,
-  currentAlbum,
 }) => {
+  const { t } = useLanguage();
   const [provider, setProvider] = useState<SearchProvider>('itunes');
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,7 +50,7 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
       const results = await searchAlbumOnline(query.trim(), provider);
 
       if (results.length === 0) {
-        setSearchError('Pre zadaný dopyt sa nenašli žiadne albumy. Skúste zmeniť kľúčové slová alebo poskytovateľa.');
+        setSearchError(t('noResults'));
         setIsLoading(false);
         return;
       }
@@ -80,7 +76,7 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
       }
     } catch (err) {
       console.error(err);
-      setSearchError('Nastala chyba pri vyhľadávaní. Skontrolujte internetové pripojenie.');
+      setSearchError(t('searchError'));
     } finally {
       setIsLoading(false);
     }
@@ -101,20 +97,20 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
           <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
-            Krok 2 · Online databáza hudby
+            {t('step2Title')}
           </span>
           <h3 className="text-base sm:text-lg font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-            <span>Vyhľadanie interpreta a albumu</span>
+            <span>{t('searchTitle')}</span>
           </h3>
           <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-            Automaticky stiahne oficiálny obal v 1400px+, rok vydania a kompletný zoznam skladieb.
+            {t('searchSubtitle')}
           </p>
         </div>
 
         {/* Save to Database button */}
         <button
           onClick={handleManualSave}
-          title="Uložiť aktuálny stav disku do lokálnej databázy"
+          title={t('saveToDatabase')}
           className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${
             saveSuccess
               ? 'bg-emerald-600 text-white shadow-xs'
@@ -126,23 +122,23 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
           {saveSuccess ? (
             <>
               <Check className="w-4 h-4" />
-              <span>Uložené do databázy</span>
+              <span>{t('savedToDb')}</span>
             </>
           ) : (
             <>
               <Save className="w-4 h-4" />
-              <span>Uložiť zmeny do DB</span>
+              <span>{t('saveToDb')}</span>
             </>
           )}
         </button>
       </div>
 
       {/* Search Input Bar */}
-      <form onSubmit={handleSearch} className="flex flex-col md:flex-row items-stretch gap-2.5">
+      <form onSubmit={handleSearch} className="space-y-3">
         {/* Provider Selector */}
-        <div className="md:w-56 shrink-0 relative">
+        <div>
           <label className="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mb-1">
-            Poskytovateľ dát:
+            {t('dataProvider')}
           </label>
           <div className="relative">
             <select
@@ -150,57 +146,56 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
               onChange={(e) => setProvider(e.target.value as SearchProvider)}
               className="w-full bg-neutral-100 dark:bg-neutral-800 border border-neutral-300 dark:border-neutral-700 rounded-lg px-3 py-2 text-xs font-medium text-neutral-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="itunes">Apple Music / iTunes (HQ Obaly)</option>
-              <option value="musicbrainz">MusicBrainz & Cover Art</option>
-              <option value="discogs">Discogs / Katalógové ID</option>
+              <option value="itunes">{t('providerItunes')}</option>
+              <option value="musicbrainz">{t('providerMusicbrainz')}</option>
+              <option value="discogs">{t('providerDiscogs')}</option>
             </select>
           </div>
         </div>
 
-        {/* Search Query Input */}
-        <div className="flex-1">
+        {/* Search Query Input & Action Button */}
+        <div>
           <label className="block text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 mb-1">
-            Názov albumu alebo interpreta / ID:
+            {t('albumOrArtistLabel')}
           </label>
-          <div className="relative flex items-center">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="napr. Daft Punk Discovery, Pink Floyd, alebo EAN kód..."
-              className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 rounded-lg pl-3.5 pr-10 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery('')}
-                className="absolute right-3 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 text-xs font-semibold"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-        </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 min-w-0">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('searchPlaceholder')}
+                className="w-full bg-neutral-50 dark:bg-neutral-800/80 border border-neutral-300 dark:border-neutral-700 rounded-lg pl-3.5 pr-8 py-2 text-sm text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 text-xs font-semibold p-1"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
 
-        {/* Search Button */}
-        <div className="md:self-end">
-          <button
-            type="submit"
-            disabled={isLoading || !query.trim()}
-            className="w-full md:w-auto px-5 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 h-[38px] shadow-xs"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Vyhľadávam...</span>
-              </>
-            ) : (
-              <>
-                <Search className="w-4 h-4" />
-                <span>Vyhľadať</span>
-              </>
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={isLoading || !query.trim()}
+              className="shrink-0 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1.5 h-[38px] shadow-xs"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{t('searching')}</span>
+                </>
+              ) : (
+                <>
+                  <Search className="w-4 h-4" />
+                  <span>{t('searchBtn')}</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </form>
 
@@ -215,7 +210,7 @@ export const AlbumSearch: React.FC<AlbumSearchProps> = ({
       <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800/60 flex flex-wrap items-center gap-2">
         <span className="text-[11px] font-semibold text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-amber-500" />
-          Rýchly tip:
+          {t('quickTip')}
         </span>
         {[
           { a: 'Daft Punk', b: 'Discovery' },
