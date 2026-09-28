@@ -1,7 +1,52 @@
 import { jsPDF } from 'jspdf';
 import { DiscData } from '../types/minidisc';
 
-export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
+// Helper to convert image URL to base64 data URL with CORS fallback
+async function getLoadedImageDataUrl(url: string): Promise<string | null> {
+  if (!url) return null;
+  if (url.startsWith('data:')) return url;
+  
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width || 300;
+        canvas.height = img.naturalHeight || img.height || 300;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        resolve(dataUrl);
+      } catch (e) {
+        // In case of CORS canvas taint
+        resolve(null);
+      }
+    };
+    img.onerror = () => {
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+export async function buildMinidiscPdfDoc(discs: DiscData[]): Promise<jsPDF> {
+  // Pre-load all cover images to Data URLs to prevent jsPDF from throwing or freezing on remote URLs
+  const coverDataMap: Record<number, string | null> = {};
+  await Promise.all(
+    discs.map(async (disc) => {
+      if (disc.coverUrl) {
+        coverDataMap[disc.id] = await getLoadedImageDataUrl(disc.coverUrl);
+      } else {
+        coverDataMap[disc.id] = null;
+      }
+    })
+  );
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -78,7 +123,8 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
     doc.rect(x, y, w, h, 'F');
 
     // Add cover image cropped top and bottom to fill 70x55mm format
-    if (disc.coverUrl) {
+    const caseCoverData = coverDataMap[disc.id] || disc.coverUrl;
+    if (caseCoverData) {
       try {
         const cropPos = disc.caseLabel.imageCropPosition || 'center';
         // Album art is square (70 x 70 mm), cropped to 70 x 55 mm
@@ -92,11 +138,11 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
           doc.rect(x, y, w, h);
           // @ts-ignore
           doc.clip();
-          doc.addImage(disc.coverUrl, 'JPEG', x, imgY, imgSize, imgSize, undefined, 'FAST');
+          doc.addImage(caseCoverData, 'JPEG', x, imgY, imgSize, imgSize, undefined, 'FAST');
           // @ts-ignore
           doc.restoreGraphicsState();
         } else {
-          doc.addImage(disc.coverUrl, 'JPEG', x, y, w, h, undefined, 'FAST');
+          doc.addImage(caseCoverData, 'JPEG', x, y, w, h, undefined, 'FAST');
         }
 
         // Overlay for readability
@@ -257,14 +303,15 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
       doc.rect(ax + 0.9, ay + 2.3, 0.8, 1.8, 'F');
     }
 
-    // Album cover artwork square in middle
-    const imgSize = 33;
+    // Album cover artwork square in middle (30 x 30 mm inside 38 x 54 mm)
+    const imgSize = 30;
     const imgX = x + (w - imgSize) / 2;
-    const imgY = y + 7.5;
+    const imgY = y + 8.5;
 
-    if (disc.coverUrl) {
+    const diskCoverData = coverDataMap[disc.id] || disc.coverUrl;
+    if (diskCoverData) {
       try {
-        doc.addImage(disc.coverUrl, 'JPEG', imgX, imgY, imgSize, imgSize, undefined, 'FAST');
+        doc.addImage(diskCoverData, 'JPEG', imgX, imgY, imgSize, imgSize, undefined, 'FAST');
       } catch (e) {
         // Fallback placeholder rect
         doc.setFillColor(200, 200, 200);
@@ -383,6 +430,51 @@ export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
   doc.setFontSize(5.5);
   doc.text('Kontrolné meradlo mierky tlače (100% / bez zmenšenia)', rulerX, rulerY + 4);
 
-  // Save the PDF
+  return doc;
+}
+
+// Download A4 PDF file
+export async function generateMinidiscPdf(discs: DiscData[]): Promise<void> {
+  const doc = await buildMinidiscPdfDoc(discs);
   doc.save(`Minidisc_Labels_A4_${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+// Direct print with robust cross-origin iframe / sandbox support
+export async function printMinidiscDirectly(discs: DiscData[]): Promise<void> {
+  // Method 1: Try native window.print() in current window
+  let printed = false;
+  try {
+    window.print();
+    printed = true;
+    return;
+  } catch (err) {
+    console.warn('Direct window.print() failed or restricted by sandbox:', err);
+  }
+
+  // Method 2: If inside sandboxed iframe (such as AI Studio preview iframe where window.print is restricted),
+  // open clean dedicated print window or fallback to high-resolution vector PDF
+  try {
+    const doc = await buildMinidiscPdfDoc(discs);
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    // Try opening in a new tab where native browser PDF viewer with 1-click print is available
+    const printWindow = window.open(blobUrl, '_blank');
+    if (printWindow) {
+      setTimeout(() => {
+        try {
+          printWindow.print();
+        } catch {
+          // User has browser viewer print button in the opened tab
+        }
+      }, 500);
+      return;
+    }
+
+    // If popup was blocked by browser, trigger direct download of the print-ready PDF
+    doc.save(`Minidisc_Labels_A4_${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (pdfErr) {
+    console.error('Print generation failed, initiating direct PDF export:', pdfErr);
+    await generateMinidiscPdf(discs);
+  }
 }

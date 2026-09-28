@@ -10,8 +10,11 @@ import { DiskLabelEditor } from './components/DiskLabelEditor';
 import { SpineLabelEditor } from './components/SpineLabelEditor';
 import { CaseLabelEditor } from './components/CaseLabelEditor';
 import { PreviewPanel } from './components/PreviewPanel';
-import { generateMinidiscPdf } from './utils/pdfExport';
+import { PrintSheet } from './components/PrintSheet';
+import { generateMinidiscPdf, printMinidiscDirectly } from './utils/pdfExport';
 import { exportDiscsToCsv, parseCsvTracks } from './utils/csvExport';
+import { exportProjectFile, parseProjectFile } from './utils/projectFile';
+import { exportMinidiscSvg } from './utils/svgExport';
 import { ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { useLanguage } from './i18n/LanguageContext';
 
@@ -165,8 +168,8 @@ export default function App() {
   };
 
   // Print handler
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    await printMinidiscDirectly(discs);
   };
 
   // PDF Export
@@ -177,6 +180,58 @@ export default function App() {
       console.error('PDF export failed:', err);
       alert(t('pdfErrorAlert'));
     }
+  };
+
+  // Inkscape SVG Export
+  const handleExportSvg = async () => {
+    try {
+      await exportMinidiscSvg(discs);
+    } catch (err) {
+      console.error('SVG export failed:', err);
+      alert('Chyba pri generovaní SVG súboru.');
+    }
+  };
+
+  // Project Save to .minidisc file
+  const handleSaveProject = () => {
+    try {
+      exportProjectFile(discs);
+      setSaveBanner(t('projectSavedSuccess'));
+      setTimeout(() => setSaveBanner(null), 3000);
+    } catch (err) {
+      console.error('Failed to export project file:', err);
+    }
+  };
+
+  // Project Load from .minidisc file
+  const handleLoadProject = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.minidisc,.json,application/json';
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const text = event.target?.result as string;
+          if (text) {
+            try {
+              const loadedDiscs = parseProjectFile(text);
+              setDiscs(loadedDiscs);
+              setActiveDiscId(1);
+              setHasUnsavedChanges(true);
+              setSaveBanner(t('projectLoadedSuccess'));
+              setTimeout(() => setSaveBanner(null), 3500);
+            } catch (parseErr) {
+              console.error('Project load parse error:', parseErr);
+              alert(t('projectLoadError'));
+            }
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
   };
 
   // CSV Export
@@ -226,8 +281,11 @@ export default function App() {
         discs={discs}
         onPrint={handlePrint}
         onExportPdf={handleExportPdf}
+        onExportSvg={handleExportSvg}
         onExportCsv={handleExportCsv}
         onImportCsv={handleImportCsv}
+        onSaveProject={handleSaveProject}
+        onLoadProject={handleLoadProject}
         onResetData={handleResetData}
       />
 
@@ -428,6 +486,15 @@ export default function App() {
         results={multiReleases}
         onSelectRelease={handleApplyAlbumData}
       />
+
+      {/* Dedicated Print Container (Hidden on screen, exclusively visible when printing) */}
+      <div id="print-sheet-portal" className="print-only-sheet bg-white m-0 p-0">
+        <PrintSheet
+          discs={discs}
+          scale={1}
+          showCropMarks={true}
+        />
+      </div>
 
     </div>
   );

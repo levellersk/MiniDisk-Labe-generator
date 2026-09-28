@@ -383,24 +383,21 @@ function renderCartridgeLabel(disc: DiscData, isHighlight: boolean, key: string,
         </div>
 
         {/* Album Cover in center (Square) */}
-        <div
-          className="w-full aspect-square my-auto rounded-sm overflow-hidden bg-black/10 border border-black/10 relative"
-          style={{
-            maxHeight: '30mm',
-          }}
-        >
-          {disc.coverUrl ? (
-            <img
-              src={disc.coverUrl}
-              alt={disc.album}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-xs opacity-40">
-              MD Cover
-            </div>
-          )}
+        <div className="w-full flex-1 flex items-center justify-center my-0.5 overflow-hidden min-h-0">
+          <div className="w-full aspect-square max-h-full rounded-xs overflow-hidden bg-black/10 border border-black/10 relative flex items-center justify-center">
+            {disc.coverUrl ? (
+              <img
+                src={disc.coverUrl}
+                alt={disc.album}
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-[8pt] opacity-40">
+                MD Cover
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Artist & Year at bottom with MD Logo */}
