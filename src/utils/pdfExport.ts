@@ -442,22 +442,22 @@ export async function buildMinidiscPdfDoc(discs: DiscData[]): Promise<jsPDF> {
       doc.text(disc.album, x + 2.5, y + 5.5, { maxWidth: w - 5 - (hasArrow ? 5 : 0) });
     }
 
-    // Insertion direction arrow in top right corner
+    // Insertion direction indicator in top right corner (stylized slender needle triangle)
     if (hasArrow) {
-      const ax = x + w - 4.8;
-      const ay = y + 2.0;
+      const triW = 1.4; // width at base in mm
+      const triH = 3.6; // height in mm (slender ~2.5x ratio)
+      const ax = x + w - 3.8;
+      const ay = y + 1.8;
       doc.setFillColor(...textRgb);
       doc.setDrawColor(...textRgb);
-      doc.setLineWidth(0.1);
-      // Arrowhead pointing up
+      doc.setLineWidth(0.05);
+      // Needle triangle pointing up: apex at top center (ax + triW / 2, ay), bottom right (ax + triW, ay + triH), bottom left (ax, ay + triH)
       doc.triangle(
-        ax, ay + 2.3,
-        ax + 2.6, ay + 2.3,
-        ax + 1.3, ay,
+        ax, ay + triH,
+        ax + triW, ay + triH,
+        ax + triW / 2, ay,
         'FD'
       );
-      // Stem
-      doc.rect(ax + 0.9, ay + 2.3, 0.8, 1.8, 'F');
     }
 
     // Album cover artwork square in middle (30 x 30 mm inside 38 x 54 mm)

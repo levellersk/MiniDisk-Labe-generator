@@ -7,7 +7,8 @@ interface InsertionArrowProps {
 }
 
 /**
- * Authentic Minidisc cartridge insertion direction arrow (šípka smeru vkladania do MD mechaniky).
+ * Authentic Sony MiniDisc cartridge insertion direction indicator (štylizovaný trojuholník smeru vkladania do MD mechaniky).
+ * Features the iconic slender, elongated isosceles needle-triangle embossed/printed on authentic MiniDisc shells.
  * Positioned in the top right corner of the 38x54mm cartridge label.
  */
 export const InsertionArrow: React.FC<InsertionArrowProps> = ({
@@ -15,11 +16,15 @@ export const InsertionArrow: React.FC<InsertionArrowProps> = ({
   color = 'currentColor',
   className = '',
 }) => {
+  // Aspect ratio is approx 1:2.4 (slender needle triangle pointing up)
+  const width = Math.max(5, Math.round(size * 0.55));
+  const height = Math.round(width * 2.3);
+
   return (
     <svg
-      width={size}
-      height={Math.round((size * 12) / 10)}
-      viewBox="0 0 10 12"
+      width={width}
+      height={height}
+      viewBox="0 0 10 23"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`shrink-0 ${className}`}
@@ -27,8 +32,9 @@ export const InsertionArrow: React.FC<InsertionArrowProps> = ({
       aria-label="Smer vkladania disku"
     >
       <title>Smer vkladania disku</title>
-      <path
-        d="M5 0.5L9.2 5.2H6.3V11.5H3.7V5.2H0.8L5 0.5Z"
+      {/* Elongated slender triangle pointing upward */}
+      <polygon
+        points="5,0.8 9.5,22.2 0.5,22.2"
         fill={color}
       />
     </svg>

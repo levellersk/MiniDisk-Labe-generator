@@ -6,10 +6,10 @@ import {
   Bold, 
   Check, 
   Palette, 
-  Sliders,
-  ArrowUp
+  Sliders
 } from 'lucide-react';
 import { MiniDiscLogo } from './MiniDiscLogo';
+import { InsertionArrow } from './InsertionArrow';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface DiskLabelEditorProps {
@@ -362,7 +362,7 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
             </span>
           </label>
 
-          {/* Smer vkladania (Šípka) */}
+          {/* Smer vkladania (Štylizovaný trojuholník) */}
           <label className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-200 dark:border-neutral-700 cursor-pointer hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
             <input
               type="checkbox"
@@ -370,8 +370,8 @@ export const DiskLabelEditor: React.FC<DiskLabelEditorProps> = ({
               onChange={(e) => updateField('showInsertionArrow', e.target.checked)}
               className="rounded accent-indigo-600 w-4 h-4"
             />
-            <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1">
-              <ArrowUp className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+            <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200 flex items-center gap-1.5">
+              <InsertionArrow size={10} color="#6366f1" />
               <span>{t('insertionArrowElement')}</span>
             </span>
           </label>

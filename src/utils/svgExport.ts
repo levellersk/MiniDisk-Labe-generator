@@ -98,11 +98,12 @@ export async function generateMinidiscSvg(discs: DiscData[]): Promise<string> {
   };
 
   const arrowSvg = (x: number, y: number, size: number, color: string) => {
-    const scale = size / 10;
+    // Stylized slender needle triangle pointing up (matching authentic MD shells)
+    // Width ~1.4mm, Height ~3.6mm
+    const w = 1.4;
+    const h = 3.6;
     return `
-      <g transform="translate(${x}, ${y}) scale(${scale})">
-        <path d="M5 0.5L9.2 5.2H6.3V11.5H3.7V5.2H0.8L5 0.5Z" fill="${color}" />
-      </g>
+      <polygon points="${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}" fill="${color}" />
     `;
   };
 
